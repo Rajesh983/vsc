@@ -1,0 +1,104 @@
+{
+  "name": "alpine983",
+  "displayName": "Alpine",
+  "publisher": "Rajesh983",
+  "description": "",
+  "version": "1.73.0",
+  "engines": {
+    "vscode": "^1.73.0"
+  },
+  "categories": [
+    "Other"
+  ],
+
+  "extensionDependencies": [
+    "vscode.git"
+  ],
+
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:calicoColors.colorsView",
+		"onCommand:calicoColors.addColor",
+		"onCommand:calicoColors.clearColors"
+  ],
+  "main": "./src/extension.js",
+
+  "contributes": {
+    "commands": [
+      {
+        "command": "alpine.search",
+        "title": "alpine-search"
+      },
+      {
+        "command": "invoke-api",
+        "title": "Invoke API"
+      },
+      {
+				"command": "calicoColors.addColor",
+				"category": "Calico Colors",
+				"title": "Add Color"
+			},
+			{
+				"command": "calicoColors.clearColors",
+				"category": "Calico Colors",
+				"title": "Clear Colors",
+				"icon": "$(clear-all)"
+			}
+    ],
+
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "Sample-Product",
+          "title": "8800-Product",
+          "icon": "./img/Frame 275.png"
+        }
+      ]
+    },
+    "views": {
+      "Sample-Product": [
+        {
+          "id": "exampleTreeview",
+          "name": ""
+        }
+      ],
+      "explorer": [
+				{
+					"type": "webview",
+					"id": "calicoColors.colorsView",
+					"name": "Calico Colors"
+				}
+			]
+    },
+    "menus": {
+			"view/title": [
+				{
+					"command": "calicoColors.clearColors",
+					"group": "navigation",
+					"when": "view == calicoColors.colorsView"
+				}
+			]
+		}
+
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "node ./test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.0.0",
+    "@types/mocha": "^10.0.0",
+    "@types/node": "16.x",
+    "@types/vscode": "^1.73.0",
+    "@vscode/test-electron": "^2.2.0",
+    "eslint": "^8.26.0",
+    "glob": "^8.0.3",
+    "mocha": "^10.1.0",
+    "typescript": "^4.8.4"
+  },
+  "dependencies": {
+    "axios": "^1.1.3",
+    "form-data": "^4.0.0"
+  }
+}
