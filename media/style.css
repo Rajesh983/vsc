@@ -1,7 +1,7 @@
 *,
 *:before,
 *:after {
-  box-sizing: inherit;
+  box-sizing: border-box;
 }
 
 /* some of the user settings are available as CSS variables on the HTML element */
@@ -9,7 +9,7 @@ body {
   font-size: var(--vscode-font-size);
   font-weight: var(--vscode-font-weight);
   font-family: var(--vscode-font-family);
-  background-color: var(--vscode-editor-background);
+  /* background-color: var(--vscode-editor-background); */
 }
 
 img {
@@ -27,5 +27,64 @@ a:active {
 }
 
 p{
-  font-size: 30px;
+  font-size: 15px;
+}
+
+.input-container{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  margin-top: 35px;
+}
+.input-box{
+  width: 100%;
+  margin-bottom: 8px;
+  border:none;
+  height: 25px;
+  outline: none;
+}
+.login-btn{
+  background-color: #0071bc;
+  width: 100%;
+  border: none;
+  height: 30px;
+  
+}
+
+@media (prefers-color-scheme: light) {
+  html{
+    background-color: #333;
+  }
+  p {
+    color: #e4e4e4;
+  }
+  a {
+    color: #db6161;
+  }
+  h5 {
+    color: #42423f;
+  }
+  h2 {
+    color: #e4e4e4;
+  }
+  
+}
+
+@media (prefers-color-scheme: dark) {
+  html{
+    background-color: #333;
+  }
+  p {
+    color: #e4e4e4;
+  }
+  a {
+    color: #db6161;
+  }
+  h5{
+    color: #42423f;
+  }
+  h2{
+    color: #e4e4e4;
+  }
 }

@@ -5,11 +5,17 @@ const path = require("path");
 const fs = require("fs");
 const { posix } = require("path");
 
-let myData,view;
-let stageData, stageView,stageFilesList;
+
+
+
+let myData, view;
+let stageData, stageView, stageFilesList;
+let octokit;
 
 const DataProvider = require("./experiments.js");
-const ColorsViewProvider = require("./colorsViewProvider")
+const loginViewProvider = require("./loginViewProvider")
+const Credentials = require("./credentials")
+const getGitHubUserInfo = require("../vscode-git/getGitHubUserInfo")
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -56,26 +62,71 @@ async function countAndTotalOfFilesInFolder(folder) {
 }
 
 async function activate(context) {
-  
+
+
+
+  // context.subscriptions.push(
+  //   vscode.window.createTerminal({ name: 'Hooks', hideFromUser: true }).sendText('git config core.hooksPath ./pre-commit'),
+  // )
+
+  context.subscriptions.push(
+    vscode.window
+      .showInformationMessage("Do you want to do this?", "Yes", "No")
+      .then(async (answer) => {
+        if (answer === "Yes") {
+          const wsedit = new vscode.WorkspaceEdit();
+          const wsPath = vscode.workspace.workspaceFolders[0].uri.fsPath; // gets the path of the first workspace folder
+          const filePath = vscode.Uri.file(wsPath + '/.EMP/pre-commit');
+          const newTerminal = vscode.window.createTerminal({ name: 'Hooks', hideFromUser: true })
+          newTerminal.sendText('git config core.hooksPath .EMP')
+          newTerminal.sendText('chmod +x .EMP/pre-commit')
+          var uint8array = new TextEncoder().encode('echo "$(dirname -- "$0")\necho "Helloo World"');
+          wsedit.createFile(filePath, { ignoreIfExists: true,contents:uint8array});
+          await vscode.workspace.applyEdit(wsedit);
+        } else {
+          console.log("No")
+        }
+      })
+  )
+
+
+
+  const findPre = await vscode.workspace.findFiles('**/pre-commit',"**/node_modules/**")
+  console.log({findPre})
+
+
+  // const uri = vscode.Uri.file(findPre[0].path)
+
+  // vscode.workspace.openTextDocument(uri).then((document) => {
+  //   let text = document.getText();
+  //   console.log({text})
+  // });
+
+
 
   //adding webview view 
 
-  const provider = new ColorsViewProvider(context.extensionUri);
+  const provider = new loginViewProvider(context);
 
-	context.subscriptions.push(
-		vscode.window.registerWebviewViewProvider(ColorsViewProvider.viewType, provider));
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider('login.sidebar', provider)
+    );
 
-	context.subscriptions.push(
-		vscode.commands.registerCommand('calicoColors.addColor', () => {
-			provider.addColor();
-		}));
+    context.subscriptions.push(
+      vscode.commands.registerCommand('login.sendMessage', () => {
+        provider.sendMessage();
+      }));
+  
+    
 
-	context.subscriptions.push(
-		vscode.commands.registerCommand('calicoColors.clearColors', () => {
-			provider.clearColors();
-		}));
+      const credentials = new Credentials();
+      const sampleRes = await credentials.initialize(context);
+      octokit = await credentials.getOctokit();
+      let githubUserInfo = await getGitHubUserInfo({ octokit });
+      let username = githubUserInfo.login;
+      console.log({sampleRes,octokit,githubUserInfo})
 
-    //done adding webview view
+  //done adding webview view
 
 
   // Adding files to our extension dynamically
@@ -149,13 +200,13 @@ async function activate(context) {
         //let uri = vscode.Uri.file(args);
         //console.log({uri})
         //await vscode.commands.executeCommand("vscode.openFolder", uri);
-        
-    const leftUri = args.leftUri
-    const rightUri = args.rightUri
-    console.log({leftUri,rightUri})
- 
-     await vscode.commands.executeCommand('vscode.diff', leftUri, rightUri,"Comparision");
- 
+
+        const leftUri = args.leftUri
+        const rightUri = args.rightUri
+        console.log({ leftUri, rightUri })
+
+        await vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, "Comparision");
+
       } catch (error) {
         console.log(error);
       }
@@ -177,7 +228,9 @@ async function activate(context) {
 
   let changes = [];
   //console.log(api.state)
+
   /* If git is not initialized, api.repositories gives empty array */
+
   console.log({ gitExtension, api });
 
   // changing files dynamically with git
@@ -188,107 +241,124 @@ async function activate(context) {
   //   );
   //   filesList = latestFiles.files;
   // } else {
-// try {
-//   const res123 = await api.repositories[0].getObjectDetails();
+  // try {
+  //   const res123 = await api.repositories[0].getObjectDetails();
 
-//   console.log("repositories", res123);
+  //   console.log("repositories", res123);
 
-// } catch (error) {
-//   console.log(error)
-// }
- 
+  // } catch (error) {
+  //   console.log(error)
+  // }
+
   // experiments block starts
 
-   //editing file tracking and line numbers starts
+  //editing file tracking and line numbers starts
 
 
-   vscode.workspace.onDidSaveTextDocument((document) => {
+  vscode.workspace.onDidSaveTextDocument((document) => {
     const file = document.fileName;
     vscode.window.showInformationMessage(`Saved ${file}`);
   });
-  
+
   vscode.workspace.onDidOpenTextDocument((document) => {
     const file = document.fileName;
     vscode.window.showInformationMessage(`Opened ${file}`);
   });
-  
+
   vscode.workspace.onDidChangeTextDocument((changes) => {
     const file = changes.document.fileName;
-    console.log(changes.contentChanges[0].text,"text")
+    console.log(changes.contentChanges[0].text, "text")
     let startLine = changes.contentChanges[0].range._start._line + 1
-  
-    console.log(changes.contentChanges[0].range._end,"end")
+
+    console.log(changes.contentChanges[0].range._end, "end")
 
     vscode.window.showInformationMessage(`You are editing at line ${startLine}`);
   });
-   
 
-   
+
+
 
   api.repositories[0].repository.workingTreeGroup.onDidUpdateResourceStates(e => {
-    console.log("onDidUpdateResourceStates",e)
+    console.log("onDidUpdateResourceStates", e)
   })
 
-   //editing file tracking and line numbers ends
+  //editing file tracking and line numbers ends
 
 
 
 
-  console.log(api.repositories[0].state.workingTreeChanges,"Changes Files")
-  console.log(api.repositories[0].state.indexChanges,"Staged Files")
-  console.log(api.repositories[0].state.mergeChanges,"Merge Files")
-  
+  console.log(api.repositories[0].state.workingTreeChanges, "Changes Files")
+  console.log(api.repositories[0].state.indexChanges, "Staged Files")
+  console.log(api.repositories[0].state.mergeChanges, "Merge Files")
+
+  //Getting local git user details
+
+  const localUsername = await api.repositories[0].getGlobalConfig('user.name')
+  const localEmail = await api.repositories[0].getGlobalConfig('user.email')
+  console.log({username:localUsername,email:localEmail})
+
+  try{
+    let config = await api.repositories[0].getConfig('remote.origin.url')
+    console.log({config})
+  }catch(e){
+    console.log({e})
+  }
+
+
   api.repositories[0].repository.onDidChangeOriginalResource(async (e) => {
-    console.log("onDidChangeOriginalResource",e)
+    console.log("onDidChangeOriginalResource", e)
   })
 
   api.repositories[0].repository.onDidRunOperation(async (e) => {
-    console.log("onDidRunOperation",e)
+    console.log("onDidRunOperation", e)
   })
 
   api.repositories[0].repository.onRunOperation(async (e) => {
-    console.log("onRunOperation",e)
+    console.log("onRunOperation", e)
   })
-  
+
 
   api.repositories[0].repository.onDidChangeRepository(async (e) => {
-    console.log("onDidChangeRepository",e)
+    console.log("onDidChangeRepository", e)
   })
 
 
-  api.repositories[0].repository.onDidRunGitStatus(async(e) => {
+  api.repositories[0].repository.onDidRunGitStatus(async (e) => {
     const branchDetails = await api.repositories[0].repository.HEAD
 
     //getting remote repositories information
     const remotes = await api.repositories[0].repository.remotes
 
-    console.log({branchDetails,remotes})
+    console.log({ branchDetails, remotes })
     vscode.window.showInformationMessage(`You are on ${branchDetails.name} branch`)
-    if(api.repositories[0].state.indexChanges.length !== 0){
+    if (api.repositories[0].state.indexChanges.length !== 0) {
       const resourceList = api.repositories[0].state.indexChanges;
 
+
+
+
       const urisList = resourceList.map(
-        (eachRes) => eachRes.resource
+        (eachRes) => eachRes.uri
       );
 
       changes = urisList;
       const updatedFilesList = changes.map((eachChange) => {
         //const filePath = eachChange.uri.path;
-        const filePath = eachChange._resourceUri.path;
+        const filePath = eachChange.path;
         const name = filePath.split("/").slice(-1)[0];
         const fileResource = eachChange
-        return { filePath, name ,fileResource};
+        return { filePath, name, fileResource };
       });
-       stageFilesList = updatedFilesList;
+      stageFilesList = updatedFilesList;
 
-      myData.gettingUpdatedFilesList(filesList,stageFilesList);
+      myData.gettingUpdatedFilesList(filesList, stageFilesList);
       myData.refresh();
-     view.badge = { value: filesList.length+stageFilesList.length };
-    }else{
+      view.badge = { value: filesList.length + stageFilesList.length };
+    } else {
       stageFilesList = [];
-    myData.gettingUpdatedFilesList(filesList,stageFilesList);
-    myData.refresh();
-    view.badge = { value: filesList.length+stageFilesList.length };
+      myData.gettingUpdatedFilesList(filesList, stageFilesList);
+      myData.refresh();
+      view.badge = { value: filesList.length + stageFilesList.length };
     }
   })
 
@@ -301,95 +371,99 @@ async function activate(context) {
 
 
 
-  api.onDidCloseRepository(async(e) => {
+  api.onDidCloseRepository(async (e) => {
     //console.log("close", e);
     filesList = [];
-    myData.gettingUpdatedFilesList(filesList,filesList);
+    myData.gettingUpdatedFilesList(filesList, filesList);
     myData.refresh();
-     view.badge = { value: 0 };
+    view.badge = { value: 0 };
     vscode.window.showInformationMessage("Please initialize git")
-    
+
   });
 
 
-  api.onDidPublish((e) =>{
-   // console.log("Published", e);
-  //   filesList = [];
-  //   myData.gettingUpdatedFilesList(filesList,"Files");
-  //   myData.refresh();
-  //    view.badge = { value: 0 };
-   })
+  api.onDidPublish((e) => {
+    // console.log("Published", e);
+    //   filesList = [];
+    //   myData.gettingUpdatedFilesList(filesList,"Files");
+    //   myData.refresh();
+    //    view.badge = { value: 0 };
+  })
 
-  function openGitFiles() {
+  async function openGitFiles() {
     if (api.repositories.length === 0) {
       vscode.window.showInformationMessage("Please initialize git");
-      
+
     } else {
       //console.log("files count", api.repositories[0].ui._sourceControl.count);
       //console.log(api.repositories[0].state.HEAD,"Head")
       const resourceList = api.repositories[0].state.workingTreeChanges;
       const stageList = api.repositories[0].state.indexChanges;
 
+      const remotes = await api.repositories[0].repository
+
+
       const urisList = resourceList.map(
-        (eachRes) =>  eachRes.resource
-        
+        (eachRes) => eachRes.uri
+
       );
 
       const stageUrisList = stageList.map(
-        (eachRes) => eachRes.resource
+        (eachRes) => eachRes.uri
       );
 
       changes = urisList;
       const updatedFilesList = changes.map((eachChange) => {
         //const filePath = eachChange.uri.path;
-        const filePath = eachChange._resourceUri.path;
+        console.log({ eachChange })
+        const filePath = eachChange.path;
         const name = filePath.split("/").slice(-1)[0];
         const fileResource = eachChange
-        return { filePath, name,fileResource };
+        return { filePath, name, fileResource };
       });
       filesList = updatedFilesList;
 
       stageFilesList = stageUrisList.map((eachChange) => {
-        const filePath = eachChange._resourceUri.path;
+        const filePath = eachChange.path;
         const name = filePath.split("/").slice(-1)[0];
         const fileResource = eachChange
-        return { filePath, name,fileResource };
+        return { filePath, name, fileResource };
       });
 
       // }
 
       // creating treeView(to show files in our plugin)
 
-      myData = new DataProvider(filesList,stageFilesList);
+      myData = new DataProvider(filesList, stageFilesList);
 
-     
-      view = vscode.window.createTreeView("exampleTreeview", {
-        treeDataProvider: myData,
-      });
-     
-      view.badge = { value: filesList.length+stageFilesList.length };
-      //    view.message = "This is message"
-      //view.onDidChangeSelection( e => click(e.selection));
-      context.subscriptions.push(view);
-      
+
+      // view = vscode.window.createTreeView("exampleTreeview", {
+      //   treeDataProvider: myData,
+      // });
+
+      // view.badge = { value: filesList.length + stageFilesList.length };
+      // //    view.message = "This is message"
+      // //view.onDidChangeSelection( e => click(e.selection));
+      // context.subscriptions.push(view);
+
 
       api.repositories[0].state.onDidChange(() => {
-        
+
         const resourceList = api.repositories[0].state.workingTreeChanges;
         const urisList = resourceList.map(
-          (eachRes) => eachRes.resource
+          (eachRes) => eachRes.uri
         );
         const updatedFilesList = urisList.map((eachChange) => {
-          const filePath = eachChange._resourceUri.path;
+          const filePath = eachChange.path;
           const name = filePath.split("/").slice(-1)[0];
           const fileResource = eachChange
-          return { filePath, name,fileResource };
+          return { filePath, name, fileResource };
         });
         filesList = updatedFilesList;
-        myData.gettingUpdatedFilesList(filesList,stageFilesList);
+        myData.gettingUpdatedFilesList(filesList, stageFilesList);
         myData.refresh();
 
-        view.badge = { value: filesList.length + stageFilesList.length};
+        view.badge = { value: filesList.length + stageFilesList.length };
       });
     }
   }
