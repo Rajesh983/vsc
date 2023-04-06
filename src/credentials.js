@@ -19,21 +19,19 @@ class Credentials {
      * prompting the user to sign in.
      * */
     
-    const session =  await vscode.authentication.getSession(
+    const session = vscode.authentication.getSession(
       GITHUB_AUTH_PROVIDER_ID,
       SCOPES,
-      // {forceNewSession:true}
-     { createIfNone: true }
-    );
-    
-
-    if (session) {
+      {forceNewSession:true}
+     //{ createIfNone: true }
+    )
+    .then(res => {
       this.octokit = new Octokit.Octokit({
-        auth: session.accessToken,
+        auth: res.accessToken,
       });
-
-      return;
-    } else {
+       return;
+    })
+    .catch(err => {
       vscode.window
         .showInformationMessage("No GitHub session found. Please sign in.")
         .then(async (value) => {
@@ -43,7 +41,26 @@ class Credentials {
             );
           }
         });
-    }
+    });
+    
+
+    // if (session) {
+    //   this.octokit = new Octokit.Octokit({
+    //     auth: session.accessToken,
+    //   });
+
+    //   return;
+    // } else {
+    //   vscode.window
+    //     .showInformationMessage("No GitHub session found. Please sign in.")
+    //     .then(async (value) => {
+    //       if (value === "Sign in") {
+    //         await vscode.commands.executeCommand(
+    //           "workbench.action.accounts.login"
+    //         );
+    //       }
+    //     });
+    // }
 
     this.octokit = undefined;
   }

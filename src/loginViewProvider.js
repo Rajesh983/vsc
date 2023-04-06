@@ -26,7 +26,7 @@ class loginViewProvider {
     webviewView.webview.onDidReceiveMessage(async (data) => {
       console.log({data})
       if(data.type === 'logged_in'){
-        vscode.env.openExternal('https://github.com/login');
+        //vscode.env.openExternal('https://github.com/login');
         const repoInfo = await getRepoInfo()
         console.log({repoInfo})
         this.sendMessage({type:'logged_in',repo:repoInfo})
